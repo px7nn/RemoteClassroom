@@ -3,15 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Student — Remote Classroom</title>
+  <title>Student — Remote Classroom (Analytics Demo)</title>
   <style>
-    :root{--bg:#0b1220;--card:#0f1724;--accent:#60a5fa;--muted:#9fb3c8}
+    :root{
+      --bg:#0b1220;--card:#0f1724;--accent:#60a5fa;--muted:#9fb3c8;
+      --success:#6ee7b7; --danger:#ff6b6b;
+    }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,system-ui;background:linear-gradient(180deg,#071029,#0b1220);color:#e7f0fb}
+    body{margin:0;font-family:Inter,system-ui,Roboto,Arial;background:linear-gradient(180deg,#071029,#0b1220);color:#e7f0fb}
     header{padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
     .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#6ee7b7,#60a5fa);display:flex;align-items:center;justify-content:center;font-weight:800;color:#042027}
 
-    .container{max-width:1100px;margin:20px auto;padding:18px;display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .container{max-width:1200px;margin:20px auto;padding:18px;display:grid;grid-template-columns:1fr 360px;gap:18px}
     .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:16px;border-radius:12px}
 
     .btn{padding:10px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
@@ -23,8 +26,17 @@
     .schedule table{width:100%;border-collapse:collapse}
     .schedule th,.schedule td{border:1px solid rgba(255,255,255,0.06);padding:8px;text-align:center}
 
-    input,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit}
+    input,textarea,select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit}
     footer{padding:14px;text-align:center;color:var(--muted)}
+
+    .meta {font-size:13px;color:var(--muted);margin-top:6px}
+    .small {font-size:13px;color:var(--muted)}
+    .stats-row{display:flex;gap:8px;margin-top:10px}
+    .stat-card{flex:1;padding:10px;background:rgba(255,255,255,0.02);border-radius:8px;text-align:center}
+    .spark{display:flex;gap:3px;align-items:flex-end;height:28px;padding-top:6px}
+
+    /* simple bar for sparkline */
+    .bar{width:6px;border-radius:2px;background:linear-gradient(180deg,#60a5fa,#6ee7b7)}
 
     @media(max-width:960px){.container{grid-template-columns:1fr}.whiteboard{height:220px}video{height:220px}}
   </style>
@@ -34,22 +46,24 @@
     <div style="display:flex;gap:12px;align-items:center"><div class="logo">RC</div><div><strong>Remote Classroom</strong><div style="font-size:12px;color:var(--muted)">Student Portal</div></div></div>
     <div>
       <a href="index.html" style="color:var(--muted);text-decoration:none;margin-right:12px">Home</a>
-      <a href="teacher.html" style="color:var(--muted);text-decoration:none">Teacher View</a>
-    </div>
+      </div>
   </header>
 
   <main class="container">
+    <!-- Main student area -->
     <div>
       <div class="card" style="text-align:center">
         <strong>Join Live Class</strong>
         <div style="margin-top:8px;color:var(--muted)">(Demo: teacher preview is local only; actual streaming requires WebRTC)</div>
         <button class="btn primary" id="joinBtn">Join</button>
         <video id="studentCam" autoplay playsinline></video>
+        <div class="meta" id="connectionNote">Connection: <span id="connStatus">Unknown</span></div>
       </div>
 
       <div class="card" style="margin-top:12px">
         <strong>Resources</strong>
         <ul id="resListS"></ul>
+        <div class="meta">Resources auto-sync across tabs (demo).</div>
       </div>
 
       <div class="card" style="margin-top:12px">
@@ -59,6 +73,7 @@
 
     </div>
 
+    <!-- Aside: Chat + Analytics -->
     <aside>
       <div class="card">
         <strong>Chat</strong>
@@ -77,34 +92,207 @@
           <tr><td>Friday</td><td>1:00 - 2:00</td><td>English</td></tr>
         </table>
       </div>
+
+      <div class="card" style="margin-top:12px">
+        <strong>Analytics & Monitoring</strong>
+        <div class="meta">Attendance</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="flex:1">
+            <div style="font-size:20px;font-weight:700" id="attPercent">--%</div>
+            <div class="small">Present (sample)</div>
+          </div>
+          <div style="width:110px">
+            <button class="btn primary" id="markPresent">Mark Present</button>
+          </div>
+        </div>
+
+        <div class="meta" style="margin-top:12px">Performance</div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div style="font-weight:700" id="quizAttempts">0</div>
+            <div class="small">Quiz Attempts</div>
+          </div>
+          <div class="stat-card">
+            <div style="font-weight:700" id="avgScore">--</div>
+            <div class="small">Avg Score</div>
+          </div>
+        </div>
+
+        <div class="meta" style="margin-top:12px">Connectivity</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between"><span class="small">Status</span><span id="onlineLabel" class="small">—</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px"><span class="small">Latency</span><span id="latencyLabel" class="small">— ms</span></div>
+            <div class="spark" id="latencySpark" title="Recent latency"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn ghost" id="exportMetrics">Export Metrics</button>
+          <button class="btn primary" id="resetMetrics">Reset</button>
+        </div>
+        <div class="meta" style="margin-top:8px">Note: All analytics here are client-side demo values stored in your browser (localStorage).</div>
+      </div>
+
     </aside>
   </main>
 
-  <footer>Prototype — demo-ready. For live streaming across devices, integrate WebRTC & signaling.</footer>
+  <footer>Prototype — demo-ready. For production, ship metrics to a secure backend and anonymize PII.</footer>
 
   <script>
-    // Student-side demo interactions
+    // ---------- Demo state (localStorage-backed) ----------
+    const METRICS_KEY = 'rc_metrics_v1';
+    const RES_KEY = 'rc_resources';
+    const QUIZ_KEY = 'rc_quiz';
+
+    function getMetrics(){
+      const raw = localStorage.getItem(METRICS_KEY);
+      return raw ? JSON.parse(raw) : {
+        attendance: {presentDates: []},
+        performance: {attempts: [], avgScore: null},
+        connectivity: {latencyHistory: []}
+      };
+    }
+    function saveMetrics(m){ localStorage.setItem(METRICS_KEY, JSON.stringify(m)); }
+
+    // ---------- Chat ----------
     document.getElementById('sendC').addEventListener('click', ()=>{
-      const v = document.getElementById('chatIn').value.trim(); if(!v) return; const box = document.getElementById('chatBox'); const d = document.createElement('div'); d.textContent = v; d.style.padding='6px 8px'; d.style.margin='6px 0'; d.style.background='rgba(255,255,255,0.03)'; d.style.borderRadius='6px'; box.appendChild(d); document.getElementById('chatIn').value=''; box.scrollTop = box.scrollHeight;
+      const v = document.getElementById('chatIn').value.trim(); if(!v) return;
+      const box = document.getElementById('chatBox');
+      const d = document.createElement('div');
+      d.textContent = 'You: ' + v;
+      d.style.padding='6px 8px'; d.style.margin='6px 0'; d.style.background='rgba(255,255,255,0.03)'; d.style.borderRadius='6px';
+      box.appendChild(d); document.getElementById('chatIn').value=''; box.scrollTop = box.scrollHeight;
     });
 
-    // Join: local camera (student own webcam)
+    // ---------- Join: local camera ----------
     document.getElementById('joinBtn').addEventListener('click', async ()=>{
       try{ const s = await navigator.mediaDevices.getUserMedia({video:true,audio:true}); document.getElementById('studentCam').srcObject = s; }
-      catch(e){alert('Camera access denied')}
+      catch(e){ alert('Camera access denied'); }
     });
 
-    // Load quiz from localStorage if teacher published
-    function loadQuiz(){ const q = localStorage.getItem('rc_quiz'); if(!q) return; const obj = JSON.parse(q); const el = document.getElementById('quizArea'); el.innerHTML = `<div style="font-weight:700">${obj.q}</div><div style="margin-top:8px">${obj.opts.map((o,i)=>`<button class='btn ghost' onclick="submitAns(${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('<br><br>')}</div>`; }
-    function submitAns(i){ alert('Answer submitted: ' + String.fromCharCode(65+i)); }
+    // ---------- Quiz sync & submission ----------
+    function loadQuiz(){
+      const q = localStorage.getItem(QUIZ_KEY); if(!q) { document.getElementById('quizArea').innerHTML = 'No quiz available'; return; }
+      const obj = JSON.parse(q);
+      const el = document.getElementById('quizArea');
+      el.innerHTML = `<div style="font-weight:700">${obj.q}</div>
+        <div style="margin-top:8px">${obj.opts.map((o,i)=>`<button class='btn ghost' onclick="submitAns(${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('<br><br>')}</div>`;
+    }
+    window.submitAns = function(i){
+      // simulate grading and save performance
+      const metrics = getMetrics();
+      const score = Math.floor(Math.random()*41) + 60; // simulate 60-100
+      metrics.performance.attempts.push({when: new Date().toISOString(), score});
+      // update average
+      const total = metrics.performance.attempts.reduce((s,a)=>s+a.score,0);
+      metrics.performance.avgScore = Math.round(total / metrics.performance.attempts.length);
+      saveMetrics(metrics);
+      renderMetrics();
+      alert('Answer submitted — score (simulated): ' + score + '%');
+    };
     loadQuiz();
 
-    // Load resources published by teacher (reads from localStorage resources array written by teacher page)
-    function loadResources(){ const r = JSON.parse(localStorage.getItem('rc_resources')||'[]'); const ul = document.getElementById('resListS'); ul.innerHTML = r.map(rr=>`<li>${rr.name} <small style='color:#9fb3c8'>${rr.when}</small></li>`).join(''); }
+    // ---------- Resources sync ----------
+    function loadResources(){
+      const r = JSON.parse(localStorage.getItem(RES_KEY) || '[]');
+      const ul = document.getElementById('resListS');
+      ul.innerHTML = r.map(rr=>`<li>${rr.name} <small style='color:#9fb3c8'>${rr.when}</small></li>`).join('');
+    }
     loadResources();
 
-    // Periodically refresh quiz/resources (demo sync across tabs)
-    setInterval(()=>{ loadQuiz(); loadResources(); },1500);
+    // ---------- Metrics UI ----------
+    function renderMetrics(){
+      const m = getMetrics();
+      // attendance %
+// for demo assume 10 possible classes
+      const possible = 10;
+      const present = (m.attendance.presentDates || []).length;
+      const percent = Math.round((present / possible) * 100);
+      document.getElementById('attPercent').textContent = percent + '%';
+      // performance
+      document.getElementById('quizAttempts').textContent = (m.performance.attempts || []).length;
+      document.getElementById('avgScore').textContent = (m.performance.avgScore !== null) ? (m.performance.avgScore + '%') : '--';
+      // connectivity
+      const latHistory = m.connectivity.latencyHistory || [];
+      document.getElementById('latencyLabel').textContent = latHistory.length ? Math.round(latHistory[latHistory.length-1]) + ' ms' : '— ms';
+      document.getElementById('onlineLabel').textContent = navigator.onLine ? 'Online' : 'Offline';
+      // draw small spark bars
+      const spark = document.getElementById('latencySpark'); spark.innerHTML = '';
+      const recent = latHistory.slice(-12);
+      if(recent.length){
+        const max = Math.max(...recent, 1);
+        recent.forEach(v=>{
+          const bar = document.createElement('div');
+          bar.className = 'bar';
+          const h = Math.max(2, Math.round((v/max) * 24));
+          bar.style.height = h + 'px';
+          spark.appendChild(bar);
+        });
+      } else {
+        // placeholder
+        for(let i=0;i<6;i++){ const bar=document.createElement('div'); bar.className='bar'; bar.style.height=(4+Math.random()*18)+'px'; bar.style.opacity='0.14'; spark.appendChild(bar);}
+      }
+    }
+
+    // mark present
+    document.getElementById('markPresent').addEventListener('click', ()=>{
+      const m = getMetrics();
+      const today = (new Date()).toISOString().slice(0,10);
+      if(!m.attendance.presentDates.includes(today)) m.attendance.presentDates.push(today);
+      saveMetrics(m); renderMetrics(); alert('Marked present for ' + today);
+    });
+
+    // Export & reset
+    document.getElementById('exportMetrics').addEventListener('click', ()=>{
+      const m = getMetrics();
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(m, null, 2));
+      const dl = document.createElement('a'); dl.setAttribute('href', dataStr); dl.setAttribute('download','rc_metrics.json'); dl.click();
+    });
+    document.getElementById('resetMetrics').addEventListener('click', ()=>{
+      if(!confirm('Reset demo metrics?')) return;
+      localStorage.removeItem(METRICS_KEY);
+      renderMetrics();
+    });
+
+    // ---------- Connectivity monitoring (simple ping) ----------
+    // ping same-origin resource (index.html) periodically to estimate latency.
+    async function ping(){
+      const start = performance.now();
+      try {
+        // fetch a small same-origin file (index.html). Works when opened from disk in many browsers too.
+        const r = await fetch('index.html', {cache: 'no-store', method: 'GET'});
+        const end = performance.now();
+        const latency = end - start;
+        const m = getMetrics();
+        if(!m.connectivity.latencyHistory) m.connectivity.latencyHistory = [];
+        m.connectivity.latencyHistory.push(latency);
+        // keep last 48 entries
+        if(m.connectivity.latencyHistory.length > 48) m.connectivity.latencyHistory.shift();
+        saveMetrics(m);
+        renderMetrics();
+      } catch(e){
+        // network error (offline)
+        const m = getMetrics();
+        if(!m.connectivity.latencyHistory) m.connectivity.latencyHistory = [];
+        m.connectivity.latencyHistory.push(9999); // high value to indicate failure
+        if(m.connectivity.latencyHistory.length > 48) m.connectivity.latencyHistory.shift();
+        saveMetrics(m);
+        renderMetrics();
+      }
+    }
+
+    // measure every 4s in demo
+    setInterval(()=>{ if(navigator.onLine) ping(); else { // offline indicator
+        const m = getMetrics(); if(!m.connectivity.latencyHistory) m.connectivity.latencyHistory = []; m.connectivity.latencyHistory.push(9999); if(m.connectivity.latencyHistory.length>48) m.connectivity.latencyHistory.shift(); saveMetrics(m); renderMetrics();
+      }}, 4000);
+
+    // ---------- Periodic refresh and initial render ----------
+    setInterval(()=>{ loadQuiz(); loadResources(); renderMetrics(); }, 1500);
+    renderMetrics();
+
+    // Safety: clear camera on unload
+    window.addEventListener('beforeunload', ()=>{ const v = document.getElementById('studentCam'); if(v && v.srcObject){ v.srcObject.getTracks().forEach(t=>t.stop()); }});
   </script>
 </body>
 </html>
