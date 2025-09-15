@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Teacher — Remote Classroom</title>
+  <style>
+    :root{--bg:#0b1220;--card:#0f1724;--accent:#60a5fa;--muted:#9fb3c8}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui;background:linear-gradient(180deg,#071029,#0b1220);color:#e7f0fb}
+    header{padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
+    .topbar{display:flex;gap:12px;align-items:center}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#6ee7b7,#60a5fa);display:flex;align-items:center;justify-content:center;font-weight:800;color:#042027}
+
+    .container{max-width:1100px;margin:20px auto;padding:18px;display:grid;grid-template-columns:1fr 360px;gap:18px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:16px;border-radius:12px}
+
+    .controls{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+    .btn{padding:10px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+    .btn.primary{background:var(--accent);color:#042027}
+    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+
+    video{width:100%;height:320px;background:#031021;border-radius:10px;object-fit:cover}
+    .whiteboard{height:320px;border-radius:10px;background:#071226;position:relative}
+    .tools{display:flex;gap:8px;margin-top:10px}
+
+    .list{max-height:220px;overflow:auto}
+    input,textarea{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:inherit}
+    footer{padding:14px;text-align:center;color:var(--muted)}
+
+    @media(max-width:960px){.container{grid-template-columns:1fr}.whiteboard{height:220px}video{height:220px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <div class="logo">RC</div>
+      <div>
+        <div style="font-weight:700">Remote Classroom</div>
+        <div style="font-size:12px;color:var(--muted)">Teacher Portal</div>
+      </div>
+    </div>
+    <div>
+      <a href="index.html" style="color:var(--muted);text-decoration:none;margin-right:12px">Home</a>
+      <a href="student.html" style="color:var(--muted);text-decoration:none">Student View</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div><strong>Live Class</strong><div style="font-size:13px;color:var(--muted)">Start camera preview and teach</div></div>
+          <div id="liveBadge" style="font-size:13px;color:var(--muted)">Offline</div>
+        </div>
+        <div class="controls">
+          <button class="btn primary" id="startBtn">Start Preview</button>
+          <button class="btn ghost" id="stopBtn">Stop</button>
+          <button class="btn ghost" id="clearWB">Clear Board</button>
+        </div>
+        <video id="teacherCam" autoplay muted playsinline></video>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <strong>Create Quiz</strong>
+        <div style="margin-top:8px">
+          <input id="qText" placeholder="Question"><br><br>
+          <div style="display:flex;gap:8px"><input id="a1" placeholder="Option A"><input id="a2" placeholder="Option B"></div><br>
+          <div style="display:flex;gap:8px"><input id="a3" placeholder="Option C"><input id="a4" placeholder="Option D"></div>
+          <div style="display:flex;gap:8px;margin-top:8px"><select id="correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>
+            <button class="btn primary" id="publishQuiz">Publish</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <strong>Assignments</strong>
+        <div style="display:flex;gap:8px;margin-top:8px"><input id="assignTitle" placeholder="Title"><button class="btn primary" id="createAssign">Create</button></div>
+        <ul id="assignList" class="list" style="margin-top:8px"></ul>
+      </div>
+    </div>
+
+    <aside>
+      <div class="card">
+        <strong>Whiteboard</strong>
+        <div class="whiteboard" id="wbWrap"></div>
+        <div class="tools">
+          <button class="btn ghost" id="pen">Pen</button>
+          <button class="btn ghost" id="eraser">Eraser</button>
+          <input type="color" id="color" value="#ffffff" style="width:40px;height:40px;border-radius:8px;border:none">
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <strong>Resources</strong>
+        <div style="margin-top:8px"><input type="file" id="resUpload"><button class="btn primary" id="uploadRes">Upload</button></div>
+        <ul id="resList" class="list" style="margin-top:8px"></ul>
+      </div>
+    </aside>
+  </main>
+
+  <footer>Prototype — use as demo. Multi-user live video requires WebRTC + signaling server.</footer>
+
+  <script>
+    // Minimal interactivity (local only)
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const teacherCam = document.getElementById('teacherCam');
+    const liveBadge = document.getElementById('liveBadge');
+    let stream = null;
+
+    startBtn.addEventListener('click', async ()=>{
+      try{ stream = await navigator.mediaDevices.getUserMedia({video:true,audio:true}); teacherCam.srcObject = stream; liveBadge.textContent='Preview (local)'; }
+      catch(e){alert('Camera access denied')}
+    });
+    stopBtn.addEventListener('click', ()=>{ if(stream){stream.getTracks().forEach(t=>t.stop()); teacherCam.srcObject = null; liveBadge.textContent='Offline';} });
+
+    // Whiteboard
+    const wbWrap = document.getElementById('wbWrap'); const canvas = document.createElement('canvas'); wbWrap.appendChild(canvas); const ctx = canvas.getContext('2d'); function resize(){canvas.width = wbWrap.clientWidth; canvas.height = wbWrap.clientHeight;} window.addEventListener('resize',resize); resize(); ctx.lineCap='round'; ctx.lineJoin='round'; ctx.lineWidth=3; let drawing=false; let erasing=false;
+    canvas.addEventListener('pointerdown',e=>{drawing=true; ctx.beginPath(); const r=canvas.getBoundingClientRect(); ctx.moveTo(e.clientX-r.left,e.clientY-r.top)});
+    canvas.addEventListener('pointermove',e=>{if(!drawing) return; const r=canvas.getBoundingClientRect(); if(erasing){ctx.globalCompositeOperation='destination-out'; ctx.lineWidth=14}else{ctx.globalCompositeOperation='source-over'; ctx.lineWidth=3} ctx.lineTo(e.clientX-r.left,e.clientY-r.top); ctx.stroke();});
+    canvas.addEventListener('pointerup',()=>{drawing=false}); document.getElementById('pen').addEventListener('click',()=>{erasing=false}); document.getElementById('eraser').addEventListener('click',()=>{erasing=true}); document.getElementById('clearWB').addEventListener('click',()=>{ctx.clearRect(0,0,canvas.width,canvas.height)});
+    document.getElementById('color').addEventListener('input',e=>{ctx.strokeStyle = e.target.value}); ctx.strokeStyle = '#ffffff';
+
+    // Resources
+    const resUpload = document.getElementById('resUpload'); const resList = document.getElementById('resList'); let resources=[];
+    document.getElementById('uploadRes').addEventListener('click',()=>{ const f=resUpload.files[0]; if(!f) return; resources.push({name:f.name,when:new Date().toLocaleString()}); renderRes(); resUpload.value=''; });
+    function renderRes(){ resList.innerHTML = resources.map(r=>`<li>${r.name} <small style='color:#9fb3c8'>${r.when}</small></li>`).join(''); }
+
+    // Assignments
+    const assignList = document.getElementById('assignList'); let assigns=[]; document.getElementById('createAssign').addEventListener('click',()=>{ const t = document.getElementById('assignTitle').value.trim(); if(!t) return; assigns.push({title:t,when:new Date().toLocaleString(),subs:[]}); document.getElementById('assignTitle').value=''; renderAssigns(); }); function renderAssigns(){ assignList.innerHTML = assigns.map(a=>`<li>${a.title} <small style='color:#9fb3c8'>${a.when}</small></li>`).join(''); }
+
+    // Quiz
+    document.getElementById('publishQuiz').addEventListener('click',()=>{ const q = document.getElementById('qText').value; if(!q) return; const opts = [document.getElementById('a1').value,document.getElementById('a2').value,document.getElementById('a3').value,document.getElementById('a4').value]; const corr = document.getElementById('correct').value; localStorage.setItem('rc_quiz', JSON.stringify({q,opts,corr})); alert('Quiz published (demo: stored locally). Students opening student portal in same browser will see it.'); });
+
+    // Stop camera on leave
+    window.addEventListener('beforeunload',()=>{ if(stream) stream.getTracks().forEach(t=>t.stop()); });
+  </script>
+</body>
+</html>
+
